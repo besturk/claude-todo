@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>To Do</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Yapılacaklar</h1>
+
+    <div id="error-msg" class="error-msg"></div>
+
+    <div class="input-row">
+      <input type="text" id="taskInput" placeholder="Yeni görev ekle..." autocomplete="off">
+      <button id="addBtn">Ekle</button>
+    </div>
+
+    <div class="filters">
+      <button class="filter-btn active" data-filter="all">Tümü</button>
+      <button class="filter-btn" data-filter="active">Aktif</button>
+      <button class="filter-btn" data-filter="done">Tamamlanan</button>
+    </div>
+
+    <ul id="taskList"></ul>
+
+    <div class="footer">
+      <span id="remaining">0 görev kaldı</span>
+      <button id="clearDone">Tamamlananları Sil</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
