@@ -7,27 +7,87 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="container">
-    <h1>Yapılacaklar</h1>
 
-    <div id="error-msg" class="error-msg"></div>
+  <!-- AUTH EKRANLARI -->
+  <div id="authWrap" class="auth-wrap">
 
-    <div class="input-row">
-      <input type="text" id="taskInput" placeholder="Yeni görev ekle..." autocomplete="off">
-      <button id="addBtn">Ekle</button>
+    <!-- Giriş -->
+    <div id="screenLogin" class="auth-card">
+      <h1>Giriş Yap</h1>
+      <div id="loginError" class="error-msg"></div>
+      <label>E-posta
+        <input type="email" id="loginEmail" placeholder="ornek@mail.com" autocomplete="email">
+      </label>
+      <label>Şifre
+        <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+      </label>
+      <button id="loginBtn" class="btn-primary">Giriş Yap</button>
+      <p class="switch-link">Hesabın yok mu? <a href="#" id="goRegister">Kayıt Ol</a></p>
     </div>
 
-    <div class="filters">
-      <button class="filter-btn active" data-filter="all">Tümü</button>
-      <button class="filter-btn" data-filter="active">Aktif</button>
-      <button class="filter-btn" data-filter="done">Tamamlanan</button>
+    <!-- Kayıt -->
+    <div id="screenRegister" class="auth-card hidden">
+      <h1>Kayıt Ol</h1>
+      <div id="registerError" class="error-msg"></div>
+      <label>E-posta
+        <input type="email" id="registerEmail" placeholder="ornek@mail.com" autocomplete="email">
+      </label>
+      <label>Şifre
+        <input type="password" id="registerPassword" placeholder="En az 6 karakter" autocomplete="new-password">
+      </label>
+      <button id="registerBtn" class="btn-primary">Kayıt Ol</button>
+      <p class="switch-link">Zaten hesabın var mı? <a href="#" id="goLogin">Giriş Yap</a></p>
     </div>
 
-    <ul id="taskList"></ul>
+    <!-- OTP Doğrulama -->
+    <div id="screenOtp" class="auth-card hidden">
+      <h1>E-posta Doğrula</h1>
+      <p class="otp-desc">E-postanıza gönderilen 6 haneli kodu girin.</p>
+      <div id="otpError" class="error-msg"></div>
+      <div class="otp-inputs">
+        <input class="otp-box" type="text" maxlength="1" inputmode="numeric">
+        <input class="otp-box" type="text" maxlength="1" inputmode="numeric">
+        <input class="otp-box" type="text" maxlength="1" inputmode="numeric">
+        <input class="otp-box" type="text" maxlength="1" inputmode="numeric">
+        <input class="otp-box" type="text" maxlength="1" inputmode="numeric">
+        <input class="otp-box" type="text" maxlength="1" inputmode="numeric">
+      </div>
+      <button id="otpBtn" class="btn-primary">Doğrula</button>
+      <p class="switch-link"><a href="#" id="resendOtp">Kodu tekrar gönder</a></p>
+    </div>
 
-    <div class="footer">
-      <span id="remaining">0 görev kaldı</span>
-      <button id="clearDone">Tamamlananları Sil</button>
+  </div>
+
+  <!-- TODO UYGULAMASI -->
+  <div id="appWrap" class="hidden">
+    <div class="container">
+      <div class="app-header">
+        <h1>Yapılacaklar</h1>
+        <div class="user-bar">
+          <span id="userEmail" class="user-email"></span>
+          <button id="logoutBtn" class="btn-logout">Çıkış</button>
+        </div>
+      </div>
+
+      <div id="appError" class="error-msg"></div>
+
+      <div class="input-row">
+        <input type="text" id="taskInput" placeholder="Yeni görev ekle..." autocomplete="off">
+        <button id="addBtn">Ekle</button>
+      </div>
+
+      <div class="filters">
+        <button class="filter-btn active" data-filter="all">Tümü</button>
+        <button class="filter-btn" data-filter="active">Aktif</button>
+        <button class="filter-btn" data-filter="done">Tamamlanan</button>
+      </div>
+
+      <ul id="taskList"></ul>
+
+      <div class="footer">
+        <span id="remaining">0 görev kaldı</span>
+        <button id="clearDone">Tamamlananları Sil</button>
+      </div>
     </div>
   </div>
 
