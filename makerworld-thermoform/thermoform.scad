@@ -16,9 +16,15 @@ parca = "levha_takimi"; // [levha_takimi:Levha takımı (2 levha + kapak + pimle
 
 /* [Şekil] */
 // Silüet
-sekil = "kalp"; // [kalp:Kalp, yildiz:Yıldız, daire:Daire, kare:Yuvarlak kare, damla:Damla, yumurta:Yumurta, bulut:Bulut, hayalet:Hayalet, cicek:Çiçek, yaprak:Yaprak]
-// Silüetin uzun kenarı (mm)
+sekil = "kalp"; // [kutu:Kutu (ölçüleri mm ile gir), kalp:Kalp, yildiz:Yıldız, daire:Daire, kare:Yuvarlak kare, damla:Damla, yumurta:Yumurta, bulut:Bulut, hayalet:Hayalet, cicek:Çiçek, yaprak:Yaprak]
+// Silüetin uzun kenarı (mm) — "Kutu" seçiliyse kullanılmaz
 boy = 100; // [40:1:200]
+// Kutu: iç en (mm) — kılıfın içine girecek cismin eni + boşluk
+kutu_en = 58; // [20:0.5:200]
+// Kutu: iç boy (mm)
+kutu_boy = 60; // [20:0.5:200]
+// Kutu: köşe yarıçapı (mm)
+kutu_kose = 7; // [1:0.5:30]
 // Yıldızın iç yarıçap oranı
 yildiz_ic_oran = 0.45; // [0.3:0.01:0.7]
 // Yıldız / çiçek kol sayısı
@@ -117,6 +123,11 @@ function sekil_noktalari(ad) =
     ad == "yildiz"  ? [for (i = [0:2*kol_sayisi-1])
                           let(a = 90 + 180*i/kol_sayisi, r = i%2 ? yildiz_ic_oran : 1)
                           [r*cos(a), r*sin(a)]] :
+    ad == "kutu"    ? let(r = min(kutu_kose, kutu_en/2 - 0.01, kutu_boy/2 - 0.01),
+                          cx = kutu_en/2 - r, cy = kutu_boy/2 - r)
+                      [for (k = [0:3], j = [0:12])
+                          let(a = 90*k + 90*j/12, c = [k==0||k==3 ? cx : -cx, k<2 ? cy : -cy])
+                          c + r*[cos(a), sin(a)]] :
     ad == "daire"   ? _halka(function(t) [cos(t), sin(t)]) :
     ad == "kare"    ? [for (k = [0:3], j = [0:12])
                           let(a = 90*k + 90*j/12, c = [k==0||k==3 ? 0.8 : -0.8, k<2 ? 0.8 : -0.8])
@@ -140,12 +151,12 @@ function _max(v, i) = max([for (p = v) p[i]]);
 HAM   = sekil_noktalari(sekil);
 HAM_G = _max(HAM, 0) - _min(HAM, 0);
 HAM_Y = _max(HAM, 1) - _min(HAM, 1);
-OLCEK = boy / max(HAM_G, HAM_Y);
+OLCEK = sekil == "kutu" ? 1 : boy / max(HAM_G, HAM_Y);   // kutu doğrudan mm
 MERKEZ = [(_max(HAM, 0) + _min(HAM, 0))/2, (_max(HAM, 1) + _min(HAM, 1))/2];
 S_PTS = [for (p = HAM) (p - MERKEZ) * OLCEK];
 S_EN  = HAM_G * OLCEK;        // silüet eni (mm)
 S_BOY = HAM_Y * OLCEK;        // silüet boyu (mm)
-K     = boy / 100;            // yüz ölçek katsayısı
+K     = max(S_EN, S_BOY) / 100;   // yüz ölçek katsayısı
 
 // Silüet, ortalanmış ve boy mm'ye ölçeklenmiş. Sivri uçlar yuvarlanır.
 module S() {
