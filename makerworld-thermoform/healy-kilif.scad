@@ -13,12 +13,20 @@ parca_h = "levha"; // [levha:Levha (2 adet basılır), kalip:Dişi kalıp, zipka
 v_en = 37; // [20:0.5:56]
 // Açıklığın silüet tabanından yukarı derinliği (mm)
 v_derinlik = 11; // [0:0.5:25]
-// C kıskaç ağzı (mm) — iki kabuk kenarının toplam kalınlığı + boşluk
-c_agiz = 8.2; // [6:0.1:10]
+// C kıskaç ağzı = iki kabuk kenarı (2 × levha kalınlığı) + bu boşluk (mm)
+c_agiz_bosluk = 0.2; // [0:0.05:1]
 // Vida dış çapı (mm)
 vida_d = 8; // [6:0.5:10]
 // Vida adımı (mm)
-vida_adim = 2.5; // [1.5:0.25:3]
+vida_adim = 2.5; // [1.25:0.25:3]
+// Vida gözünün dış çapı (mm)
+goz_dis = 15; // [8:0.5:20]
+// Vida gözünün iç (ip) deliği (mm)
+goz_ic = 7; // [3:0.5:10]
+// Göz kalınlığı (mm)
+goz_et = 4; // [2:0.5:6]
+// Somun kalınlığı (mm)
+somun_h = 5; // [2:0.5:8]
 
 /* [Hidden] */
 parca = "yok";               // thermoform.scad kendi başına bir şey çizmesin
@@ -28,9 +36,10 @@ govde = 9; kubbe = 4; kubbe_icerlek = 5;
 delik_yukseklikleri = [0.25, 0.75];
 
 S_ALT = -S_BOY/2;  S_UST = S_BOY/2;
-KULAK_R = 7;
 KULAK_Y = S_UST + kenar + 3;          // vida deliğinin merkezi
 VIDA_DELIK = vida_d + 0.6;
+KULAK_R = VIDA_DELIK/2 + 2.7;
+c_agiz = 2*kalinlik + c_agiz_bosluk;
 assert(KULAK_Y - VIDA_DELIK/2 > S_UST + bosluk + 2, "vida deliği şekillenen bölgeye çok yakın");
 
 // ------------------------------------------------------------------ levha
@@ -76,20 +85,22 @@ DIS_E = vida_adim * 0.25;
 module dis(d, L) linear_extrude(L, twist = -360 * L / vida_adim, slices = ceil(L / vida_adim * 24))
     translate([DIS_E, 0]) circle(d = d - 2*DIS_E, $fn = 48);
 
-VIDA_L = 2*kalinlik + 6;            // iki kenar + somun payı
+VIDA_L = 2*kalinlik + somun_h + 1;  // iki kenar + somun + 1 mm
+YAKA_D = vida_d * 1.75;
+YAKA_PAH = (YAKA_D - vida_d) / 2;    // 45° pah, desteksiz
 module vida() {
     dis(vida_d, VIDA_L);
     // yaka: alttan 45° pahlı, desteksiz basılır
-    translate([0, 0, VIDA_L]) cylinder(d1 = vida_d, d2 = vida_d + 6, h = 3, $fn = 48);
-    translate([0, 0, VIDA_L + 3]) cylinder(d = vida_d + 6, h = 1.2, $fn = 48);
+    translate([0, 0, VIDA_L]) cylinder(d1 = vida_d, d2 = YAKA_D, h = YAKA_PAH, $fn = 48);
+    translate([0, 0, VIDA_L + YAKA_PAH]) cylinder(d = YAKA_D, h = 1.2, $fn = 48);
     // göz: askı ipi buradan geçer
-    translate([0, 0, VIDA_L + 4.2 + 6.5]) rotate([90, 0, 0])
-        linear_extrude(4, center = true) difference() { circle(d = 15, $fn = 64); circle(d = 7, $fn = 48); }
+    translate([0, 0, VIDA_L + YAKA_PAH + 1.2 + goz_dis/2 - 1]) rotate([90, 0, 0])
+        linear_extrude(goz_et, center = true) difference() { circle(d = goz_dis, $fn = 64); circle(d = goz_ic, $fn = 48); }
 }
 module somun() {
     difference() {
-        cylinder(d = vida_d + 7, h = 5, $fn = 6);
-        translate([0, 0, -1]) dis(vida_d + 0.6, 7);
+        cylinder(d = vida_d * 1.85, h = somun_h, $fn = 6);
+        translate([0, 0, -1]) dis(vida_d + 0.6, somun_h + 2);
     }
 }
 
@@ -130,7 +141,7 @@ module kapali() {
         color("Tomato") translate([p[0] + s * (kenar - DELIK_MESAFE + C_ET), p[1], 0])
             rotate([0, 0, s > 0 ? 180 : 0]) rotate([90, 0, 0]) translate([0, 0, -C_BOY/2]) c_kiskac();
     color("Orange") translate([0, KULAK_Y, kalinlik - VIDA_L]) vida();
-    color("Orange") translate([0, KULAK_Y, -kalinlik - 5]) somun();
+    color("Orange") translate([0, KULAK_Y, -kalinlik - somun_h]) somun();
 }
 
 if      (parca_h == "levha")          levha_healy();
