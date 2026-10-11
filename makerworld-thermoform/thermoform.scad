@@ -1,6 +1,6 @@
 // =====================================================================
 //  Thermoform Takımı — MakerWorld Parametric Model Maker
-//  Ağsı levha + dişi kalıp + erkek zıpka + asma kapağı + klipsler
+//  Ağsı levha + dişi kalıp + erkek zıpka + asma kapağı + geçme pimler
 //  (+ isteğe bağlı göz/ağız oyukları ve parçaları)
 //
 //  ÖNEMLİ: Ağsı doku modelde değil, dilimleyicidedir.
@@ -12,7 +12,7 @@
 
 /* [Çıktı] */
 // Hangi parça(lar) üretilsin?
-parca = "levha_takimi"; // [levha_takimi:Levha takımı (2 levha + kapak + klipsler), kalip_takimi:Kalıp takımı (kalıp + zıpka), yuz_takimi:Yüz parçaları (göz + ağız), levha_on:Ön levha, levha_arka:Arka levha, kalip:Dişi kalıp, zipka:Erkek zıpka, kapak:Asma kapağı, klips:Klips, onizleme:Montaj önizlemesi]
+parca = "levha_takimi"; // [levha_takimi:Levha takımı (2 levha + kapak + pimler), kalip_takimi:Kalıp takımı (kalıp + zıpka), yuz_takimi:Yüz parçaları (göz + ağız), levha_on:Ön levha, levha_arka:Arka levha, kalip:Dişi kalıp, zipka:Erkek zıpka, kapak:Asma kapağı, pim:Geçme pim, onizleme:Montaj önizlemesi]
 
 /* [Şekil] */
 // Silüet
@@ -30,11 +30,23 @@ uc_yuvarlama = 1.5; // [0:0.1:6]
 // Levha kalınlığı = ağsı dokunun derinliği (mm)
 kalinlik = 4.0; // [2:0.2:8]
 // Levhanın silüetten dışa taşması — kenetlenme kenarı (mm)
-kenar = 4.0; // [2:0.5:10]
+kenar = 8.0; // [4:0.5:14]
+
+/* [Kenar delikleri ve geçme pimler] */
+// Delik yükseklikleri (silüet boyunun oranı, alttan). Her değer sağda ve solda birer delik açar.
+delik_yukseklikleri = [0.3, 0.65];
+// Delik çapı (mm)
+delik_d = 3.4; // [2.4:0.1:6]
+// Kalıp pimi deliğe göre bu kadar ince (mm)
+kalip_pim_bosluk = 0.4; // [0.1:0.05:1]
+// Geçme pim sıkılık denemeleri (mm, diş tepesi delikten bu kadar kalın). Her değerden bir takım basılır.
+pim_sikiliklari = [0.0, 0.15, 0.3];
+// Tek pim seçildiğinde sıkılık (mm)
+tek_pim_sikilik = 0.15; // [-0.2:0.05:0.6]
 
 /* [Kalıp ve zıpka] */
-// Kalıp cidarı / zıpka flanşı genişliği (mm)
-duvar = 7.0; // [4:0.5:15]
+// Kalıp cidarı / zıpka flanşı genişliği (mm) — kenardan geniş olmalı
+duvar = 9.0; // [4:0.5:18]
 // Kalıp boşluğunun düz kısmı (mm)
 govde = 8.0; // [2:0.5:30]
 // Kubbe yüksekliği (mm)
@@ -52,12 +64,10 @@ et = 3.0; // [1.6:0.2:6]
 // Kubbe basamak yüksekliği (mm) — küçüldükçe pürüzsüz ama yavaş
 kubbe_adim = 0.4; // [0.2:0.1:2]
 
-/* [Kapak ve klipsler] */
-// Klips ağız ölçüleri (mm) — ilk baskıda hangisi tutarsa o kullanılır
-klips_agizlari = [2.6, 3.6, 4.6, 5.6];
-// Kapak ağız ölçüleri (mm)
+/* [Asma kapağı] */
+// Kapak ağız ölçüleri (mm) — ilk baskıda hangisi tutarsa o kullanılır
 kapak_agizlari = [3.6, 4.6];
-// Tek parça seçildiğinde kullanılan ağız (mm)
+// Tek kapak seçildiğinde kullanılan ağız (mm)
 tek_agiz = 3.6; // [1.5:0.1:8]
 // Kelepçe et kalınlığı (mm)
 kelepce_et = 1.6; // [1:0.1:3]
@@ -119,7 +129,7 @@ function sekil_noktalari(ad) =
                           [for (i = [0:48]) let(t = 180*i/48) [cos(t), 0.3 + sin(t)]],
                           [for (i = [0:60]) let(x = -1 + 2*i/60)
                               [x, -0.95 + 0.2*abs(sin((x + 1)/2*3*180))]]) :
-    ad == "cicek"   ? _halka(function(t) let(r = 0.62 + 0.38*abs(cos(kol_sayisi*t/2)))
+    ad == "cicek"   ? _halka(function(t) let(r = 0.62 + 0.38*abs(cos(kol_sayisi*(t - 90)/2)))
                           [r*cos(t), r*sin(t)]) :
     ad == "yaprak"  ? _halka(function(t) [0.5*sin(t)*abs(sin(t)), cos(t)]) :
     _halka(function(t) [cos(t), sin(t)]);
@@ -144,6 +154,23 @@ module S() {
     else
         polygon(S_PTS);
 }
+
+// Kenar delikleri: her yükseklikte silüetin sağ kenarı bulunur, kenara dik yönde
+// boşluk ile kenar ucunun ortasına delik konur; sol taraf bunun aynasıdır.
+// Böylece ön ve arka levha karşılıklı kapanınca delikler üst üste gelir.
+DELIK_MESAFE = (bosluk + kenar) / 2;
+function _kesisim(y) = [for (i = [0:len(S_PTS)-1])
+    let(a = S_PTS[i], b = S_PTS[(i + 1) % len(S_PTS)])
+    if ((a[1] - y) * (b[1] - y) <= 0 && a[1] != b[1])
+        let(t = (y - a[1]) / (b[1] - a[1]), d = b - a, n = [d[1], -d[0]] / norm(d))
+        [a[0] + t * d[0], n[0] < 0 ? -n : n]];
+function _sag(y) = let(k = _kesisim(y), xs = [for (q = k) q[0]]) k[search(max(xs), xs)[0]];
+DELIK_SAG = [for (f = delik_yukseklikleri)
+    let(y = -S_BOY/2 + f * S_BOY, q = _sag(y)) [q[0], y] + q[1] * DELIK_MESAFE];
+DELIKLER = concat(DELIK_SAG, [for (p = DELIK_SAG) [-p[0], p[1]]]);
+assert(DELIK_MESAFE - delik_d/2 >= bosluk + 0.6, "delik kalıp boşluğuna çok yakın: kenar'ı büyüt ya da delik_d'yi küçült");
+assert(kenar - DELIK_MESAFE - delik_d/2 >= 1.2, "deliğin dışında kalan et çok ince: kenar'ı büyüt");
+assert(duvar >= kenar, "kalıp duvarı levha kenarından dar olamaz");
 
 // Kubbe: duvara teğetten başlayıp tepede düzleşen dairesel yay.
 // i. basamakta silüet ins(i) kadar içerler, yükseklik kubbe*t.
@@ -174,6 +201,7 @@ module levha(oyuklu = false) {
         difference() {
             offset(r = kenar) S();
             if (oyuklu) yuz_oyuklari();
+            for (p = DELIKLER) translate(p) circle(d = delik_d, $fn = 32);
         }
 }
 
@@ -186,8 +214,12 @@ module zipka() {
     }
 }
 
+// Kalıp: boşluk + flanşta levhayı tutan pimler (boyu levha kalınlığından biraz kısa,
+// zıpka flanşı üstten levhaya basar, pimlere değmez).
 module kalip() {
     H = et + kubbe + govde;
+    for (p = DELIKLER) translate([p[0], p[1], H - 0.01])
+        cylinder(d = delik_d - kalip_pim_bosluk, h = kalinlik - 0.4 + 0.01, $fn = 32);
     difference() {
         union() {   // dış kabuk + flanş
             translate([0, 0, kubbe]) linear_extrude(H - kubbe) offset(r = bosluk + et) S();
@@ -207,7 +239,27 @@ module kalip() {
     }
 }
 
-// U kelepçe: ağzı aşağı basılır, iki kabuğun kenarını sıkıştırır.
+// Geçme pim: başı ve tutamağı tablada, gövdesi yukarı basılır (destek gerekmez).
+// Gövde, uca doğru incelen dişlerden oluşur; diş tepesi delikten `sik` kadar kalındır.
+// İki kabuğun deliğinden itilerek geçirilir, tutamaktan çekilerek çıkarılır.
+module gecme_pim(sik) {
+    bas_d = delik_d + 3.6; bas_h = 1.6;
+    L = 2 * kalinlik + 0.8;
+    adim = 1.2; n = ceil(L / adim);
+    difference() {
+        hull() { cylinder(d = bas_d, h = bas_h); translate([bas_d/2 + 4, 0, 0]) cylinder(d = 9, h = bas_h); }
+        translate([bas_d/2 + 4, 0, -1]) cylinder(d = 5.5, h = bas_h + 2);
+    }
+    translate([0, 0, bas_h - 0.01]) {
+        cylinder(d = delik_d - 0.5, h = L, $fn = 32);
+        for (i = [0:n-2]) translate([0, 0, i * adim])
+            cylinder(d1 = delik_d + sik, d2 = delik_d - 0.4, h = adim, $fn = 32);
+        translate([0, 0, (n-1) * adim]) cylinder(d1 = delik_d - 0.4, d2 = delik_d - 1.2, h = L - (n-1) * adim, $fn = 32);
+    }
+}
+PIM_EN = delik_d + 3.6 + 13;   // baş + tutamak boyu
+
+// U kelepçe (yalnız asma kapağında): ağzı aşağı basılır, iki kabuğun kenarını sıkıştırır.
 module kelepce(agiz) {
     g = agiz; e = kelepce_et; d = kelepce_derinlik; L = kelepce_uzunluk;
     difference() {
@@ -216,7 +268,6 @@ module kelepce(agiz) {
         translate([-L/2 - 1, -(g + 1.2)/2, -0.7]) cube([L + 2, g + 1.2, 1.2]);   // giriş pahı
     }
 }
-module klips(agiz) { kelepce(agiz); }
 
 module kapak(agiz) {
     ust = kelepce_derinlik + kelepce_et;
@@ -254,17 +305,19 @@ module sira(adet, adim) { for (i = [0:adet-1]) translate([(i - (adet-1)/2) * adi
 module levha_takimi() {
     translate([-(LEV_EN + ARALIK)/2, 0, 0]) levha(yuz);
     translate([ (LEV_EN + ARALIK)/2, 0, 0]) levha(false);
-    // kapaklar ve klipsler levhaların altında tek sırada
+    // levhaların altında: her sıkılık için bir sıra pim, en altta kapaklar
+    pim_sira = PIM_EN + ARALIK;              // pimler yan yana, tutamak +x yönünde
+    pim_der  = delik_d + 3.6 + ARALIK;
+    y0 = -LEV_BOY/2 - ARALIK - pim_der/2;
+    for (s = [0:len(pim_sikiliklari)-1], i = [0:len(DELIKLER)-1])
+        translate([(i - (len(DELIKLER)-1)/2) * pim_sira - PIM_EN/2 + (delik_d + 3.6)/2,
+                   y0 - s * pim_der, 0]) gecme_pim(pim_sikiliklari[s]);
+    yk = y0 - len(pim_sikiliklari) * pim_der - ARALIK;
     kl = kelepce_uzunluk + ARALIK;
-    y  = -LEV_BOY/2 - ARALIK - (max(klips_agizlari) + 2*kelepce_et)/2 - halka_et;
-    adet = len(klips_agizlari) + len(kapak_agizlari);
-    translate([0, y, 0]) {
-        for (i = [0:len(klips_agizlari)-1])
-            translate([(i - (adet-1)/2) * kl, 0, 0]) klips(klips_agizlari[i]);
-        for (j = [0:len(kapak_agizlari)-1])
-            translate([(len(klips_agizlari) + j - (adet-1)/2) * kl, 0, 0]) kapak(kapak_agizlari[j]);
-    }
-    tabla_uyarisi(2*LEV_EN + ARALIK, LEV_BOY + 2*ARALIK + 2*halka_et + 10);
+    for (j = [0:len(kapak_agizlari)-1])
+        translate([(j - (len(kapak_agizlari)-1)/2) * kl, yk, 0]) kapak(kapak_agizlari[j]);
+    tabla_uyarisi(max(2*LEV_EN + ARALIK, len(DELIKLER) * pim_sira),
+                  LEV_BOY + ARALIK + len(pim_sikiliklari) * pim_der + 2*ARALIK + 2*halka_et + 12);
 }
 
 module kalip_takimi() {
@@ -300,5 +353,5 @@ else if (parca == "levha_arka")   levha(false);
 else if (parca == "kalip")        kalip();
 else if (parca == "zipka")        zipka();
 else if (parca == "kapak")        kapak(tek_agiz);
-else if (parca == "klips")        klips(tek_agiz);
+else if (parca == "pim")          gecme_pim(tek_pim_sikilik);
 else if (parca == "onizleme")     onizleme();
