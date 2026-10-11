@@ -300,8 +300,6 @@ LEV_BOY = S_BOY + 2*kenar;
 KAL_EN  = S_EN  + 2*duvar;
 KAL_BOY = S_BOY + 2*duvar;
 
-module sira(adet, adim) { for (i = [0:adet-1]) translate([(i - (adet-1)/2) * adim, 0, 0]) children(); }
-
 module levha_takimi() {
     translate([-(LEV_EN + ARALIK)/2, 0, 0]) levha(yuz);
     translate([ (LEV_EN + ARALIK)/2, 0, 0]) levha(false);
