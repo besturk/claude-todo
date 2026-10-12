@@ -20,6 +20,12 @@ kalinlik = 2.4; // [1.6:0.2:4]
 v_en = 37; // [20:0.5:56]
 // Açıklığın silüet tabanından yukarı derinliği (mm)
 v_derinlik = 11; // [0:0.5:25]
+// Petek deliği (altıgen, düz kenarlar arası, mm) — 0 = desensiz dolu levha
+petek_d = 5; // [0:0.5:10]
+// Petek çubuğu kalınlığı (mm)
+petek_cubuk = 1.2; // [0.8:0.1:3]
+// Desensiz bırakılan kenar şeridi (silüetin içinde, mm)
+petek_kenar = 2; // [1:0.5:6]
 // C kıskaç ağzı = iki kabuk kenarı (2 × levha kalınlığı) + bu boşluk (mm)
 c_agiz_bosluk = 0.2; // [0:0.05:1]
 // Vida dış çapı (mm) — iki yarımın birleşmiş hâli
@@ -77,8 +83,24 @@ module levha_2d() difference() {
     }
     for (p = DELIKLER) translate(p) circle(d = delik_d, $fn = 32);
     // V önceden kesilir; kenar kalıptaki sırtın hemen dışına oturur, ona dayanır
-    offset(r = SIRT/2 + 0.15) v_acikligi();
+    offset(r = SIRT/2 + 0.15) v_acikligi();    if (petek_d > 0) petek_delikleri();
 }
+// Bal peteği: modelde açılan, levhayı boydan boya geçen altıgen delikler.
+// Silüetin kenar şeridi, V'nin çevresi ve vida boynu dolu kalır.
+module petek_delikleri() {
+    adim = petek_d + petek_cubuk;
+    sat  = adim * sqrt(3) / 2;
+    intersection() {
+        difference() {
+            offset(r = -petek_kenar) S();
+            offset(r = SIRT/2 + 0.15 + petek_kenar) v_acikligi();
+        }
+        for (j = [-ceil(S_BOY / sat) : ceil(S_BOY / sat)], i = [-ceil(S_EN / adim) - 1 : ceil(S_EN / adim) + 1])
+            translate([i * adim + (j % 2 == 0 ? 0 : adim / 2), j * sat])
+                rotate(30) circle(d = petek_d / cos(30), $fn = 6);
+    }
+}
+
 module levha_healy() {
     linear_extrude(kalinlik) levha_2d();
     yarim_vida();
