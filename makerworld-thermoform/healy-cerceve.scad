@@ -223,5 +223,10 @@ else if (parca == "somun")         somun();
 else if (parca == "kabuk")         kabuk();
 else if (parca == "ic")            ic_hacim(0);
 else if (parca == "bant")          bant();
+// 3MF için levhanın ayrı ayarlı parçaları
+else if (parca == "levha_duz")     linear_extrude(kalinlik) union() { P(); translate([-BOYUN_EN/2, S_UST]) square([BOYUN_EN, VIDA_Y1 - S_UST]); }
+else if (parca == "kaburga")       translate([0, 0, kalinlik - 0.01]) linear_extrude(RIB_H - kalinlik + 0.01) kaburga_2d();
+else if (parca == "vida")          yarim_vida();
+else if (parca == "direk_destek")  for (s = [-1, 1]) translate([s * DIREK_X, 0, -taban]) cylinder(d = direk_d + 1, h = taban + D + direk_tasma + 1);
 else if (parca == "basma_sahne")   basma_sahne();
 else if (parca == "kapali_sahne")  kapali_sahne();
