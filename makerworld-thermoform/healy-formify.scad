@@ -38,8 +38,8 @@ v_en = 37;
 v_derinlik = 11;
 
 /* [Levha] */
-// Levha kalınlığı (mm)
-kalinlik = 0.6; // [0.4:0.1:1.6]
+// Levha kalınlığı (mm) — 0,6 ince, 1,6 kalın geldi
+kalinlik = 1.0; // [0.4:0.1:1.6]
 // Çerçeve genişliği (mm)
 rim_en = 1.2;
 // Çerçeve yüksekliği, levha dahil (mm)

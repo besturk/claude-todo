@@ -7,7 +7,7 @@ def kes(a,b):
     except Exception as e: return 'hata '+str(e)
 def M(z_mirror_to): # shell z -> female z : z_f = PF+t - z
     T=np.eye(4); T[2,2]=-1; T[2,3]=z_mirror_to; return T
-D=10; t=0.6; PF=2+D+t+0.1; HD=PF+t+0.1; TE=2.2; C=0.1
+D=10; t=1.0; PF=2+D+t+0.1; HD=PF+t+0.1; TE=2.2; C=0.1
 # 1 cihaz
 c=L('../v4/cihaz'); c.apply_translation([0,0,-c.bounds[0][2]])
 from shapely.geometry import Polygon
@@ -31,7 +31,7 @@ k2=P['kabuk'].copy(); R=np.diag([-1,1,-1,1]); k2.apply_transform(R)
 print('5) iki kabuk çakışma:', kes(P['kabuk'],k2))
 # kıskaç: yan çerçevede
 
-A=31.4+0.1+1.2
+A=31.8+0.1+1.2
 for sx in (1,-1):
     k=P['kiskac'].copy(); 
     # klips: x->-x (dünya), y->z, z->y
