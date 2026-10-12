@@ -65,3 +65,10 @@ fig=plt.figure(figsize=(15,5.5))
 for i,(el,az) in enumerate(((22,-60),(22,120),(80,-90))):
     ax=fig.add_subplot(1,3,i+1,projection='3d'); draw(ax,[(kb,'#f3b070',1),(k2,'#e89a50',1),(sm,RENK['somun'],1)]+ks,el=el,az=az,zoom=1.1)
 fig.suptitle('Kapalı kılıf: iki kabuk + 2 yan kıskaç + askılı somun'); fig.tight_layout(); fig.savefig(V+'/g4_kapali.png',dpi=80); plt.close(fig)
+# 5 V yakın plan
+fig=plt.figure(figsize=(15,5.5)); gsp=fig.add_gridspec(1,2,width_ratios=[1,1.2])
+ax=fig.add_subplot(gsp[0])
+ciz(ax,sec2d(P['cerceve'],1.5),'#9b59e6','çerçeve (alt yüzü)'); ciz(ax,sec2d(P['kabuk'],0.5),'#e08a30','kabuk kenarı (levha)',lw=2); ciz(ax,sec2d(P['ic'],0.3),'#1f77b4','cihaz yuvası')
+ax.set_xlim(-32,32); ax.set_ylim(-46,-12); ax.set_aspect('equal'); ax.grid(alpha=.3); ax.legend(fontsize=8,loc='upper right'); ax.set_title('V bölgesi üstten: çerçeve V kenarındaki 2 mm şeridi bastırır')
+ax=fig.add_subplot(gsp[1],projection='3d'); draw(ax,[(kb,'#f3b070',1),(k2,'#e89a50',1)]+ks,el=6,az=-90,zoom=1.3); ax.set_title('Kapalı kılıf, alt kenara önden bakış: V açık')
+fig.tight_layout(); fig.savefig(V+'/g5_v.png',dpi=80); plt.close(fig)

@@ -34,6 +34,7 @@ levha_kenar = 9.0;        // şeklin dışındaki pay
 kaburga_en = 1.8;
 kaburga_h = 3.5;          // levhanın üstüne
 bant_en = 6.5;            // kenarda dolu (eş merkezli %100) bant
+v_basma = 2.0;            // V kenarında çerçevenin bastırdığı şerit
 
 /* [Çerçeve — kalp-80-ref] */
 cerceve_h = 10;
@@ -100,8 +101,14 @@ module yarim_vida() intersection() {
 }
 
 // --------------------------------------------------------------- levha
-module P() offset(r = levha_kenar) IC();                 // levhanın dış hattı
-module kaburga_2d() difference() { P(); offset(r = -kaburga_en) P(); }
+module P0() offset(r = levha_kenar) IC();                // kesilmemiş dış hat
+// V açıklığı: levha V'de önceden açık basılır. Kesik kenar, kalıbın V
+// duvarından açık payı + v_basma kadar uzakta durur; çerçeve V'nin içine
+// uzanan kısmıyla bu v_basma şeridini tabana bastırır.
+module VKES() offset(r = -(acik_pay + v_basma)) offset(r = -cihaz_bosluk) v2d();
+module P() difference() { P0(); VKES(); }               // levhanın dış hattı
+// Kaburga dış hat boyunca; V kesiğinde yok (orayı çerçeve düz bastırır)
+module kaburga_2d() difference() { P0(); offset(r = -kaburga_en) P0(); offset(r = kaburga_en) VKES(); }
 module levha() {
     linear_extrude(kalinlik) union() {
         P();
@@ -128,7 +135,7 @@ module cerceve() difference() {
     translate([0, 0, kalinlik]) linear_extrude(cerceve_h) cerceve_2d();
     // kilit kaburgası oluğu
     translate([0, 0, kalinlik - 0.01]) linear_extrude(oluk_derin + 0.01)
-        difference() { offset(r = oluk_pay) P(); offset(r = -kaburga_en - oluk_pay) P(); }
+        offset(delta = oluk_pay) kaburga_2d();
     // direk delikleri
     for (s = [-1, 1]) translate([s * DIREK_X, 0, -1]) cylinder(d = direk_d + 2*direk_pay, h = cerceve_h + 5);
     // yarım vida yatağı (vidayı tabana bastırır)
