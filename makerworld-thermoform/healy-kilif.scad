@@ -15,13 +15,13 @@ include <thermoform.scad>
 /* [Healy] */
 parca_h = "levha"; // [levha:Levha (2 adet basılır), kalip:Dişi kalıp, zipka:Erkek zıpka, c_kiskac:C kıskaç, somun:Askılı somun, kucuk_parcalar:2 kıskaç + somun, kapali:Kapalı kılıf önizleme]
 // Levha kalınlığı (mm)
-kalinlik = 2.4; // [1.6:0.2:4]
+kalinlik = 1.6; // [1:0.2:3]
 // Alttaki açıklığın eni (mm)
 v_en = 37; // [20:0.5:56]
 // Açıklığın silüet tabanından yukarı derinliği (mm)
 v_derinlik = 11; // [0:0.5:25]
 // Levha deseni (modelde açılan, boydan boya delikler)
-desen = "altigen"; // [altigen:Bal peteği, baklava:Baklava, kare:Kare ızgara, daire:Yuvarlak delik, ucgen:Üçgen, yok:Desensiz]
+desen = "yok"; // [altigen:Bal peteği, baklava:Baklava, kare:Kare ızgara, daire:Yuvarlak delik, ucgen:Üçgen, yok:Desensiz]
 // Delik büyüklüğü (mm)
 petek_d = 5; // [2:0.5:10]
 // Delikler arası çubuk kalınlığı (mm)
@@ -48,13 +48,28 @@ parca = "yok";               // thermoform.scad kendi başına bir şey çizmesi
 sekil = "kutu";
 kutu_en = 58; kutu_boy = 60; kutu_kose = 7;
 govde = 9.4; kubbe = 0.6; kubbe_icerlek = 3;   // iç boşluk: kenarda 2×9,4 = 18,8 · ortada 2×10 = 20 mm
-delik_yukseklikleri = [0.5];          // her yanda tek kıskaç
+delik_yukseklikleri = [];             // kenar deliği/pim yok: levha kalıba dış hatları çakıştırılarak oturur
+// Fincan kalıp yapısı (referans fotoğraftaki gibi):
+//   kalıp boşluğu = silüet + levha kalınlığı, duvar 3 mm, üst kenarı dar
+//   levhanın dış hattı = kalıbın dış hattı (kenar = bosluk + et)
+//   zıpka taban plakası kalıptan 1 mm geniş, levha kenarını kalıp kenarına sıkıştırır
+// NOT: OpenSCAD'da yeniden atanan değişken ilk atandığı yerde hesaplanır; bu
+// yüzden aşağıdakiler sabit yazıldı. Levha kalınlığı değişirse bosluk = kalinlik,
+// kenar = bosluk + et, duvar = kenar + 1 olacak şekilde elle güncelle.
+bosluk = 1.6;                          // yan boşluk = levha kalınlığı (taban boşluğu zaten öyle)
+et = 3;
+kenar = 4.6;                           // = bosluk + et → levhanın dış hattı = kalıbın dış hattı
+duvar = 5.6;                           // = kenar + 1 → zıpka taban plakası
+flans = 3;                             // zıpka taban plakası kalınlığı
+delik_d = 0.2;                         // (thermoform.scad denetimleri için; delik açılmıyor)
 
 S_ALT = -S_BOY/2;  S_UST = S_BOY/2;
+assert(abs(bosluk - kalinlik) < 0.01 && abs(kenar - (bosluk + et)) < 0.01 && abs(duvar - (kenar + 1)) < 0.01,
+       "bosluk/kenar/duvar levha kalınlığına göre güncellenmemiş");
 c_agiz = 2*kalinlik + c_agiz_bosluk;
 // Yarım vida kalıp flanşının dışından başlar: levha kalıba yatarken vidanın
 // yuvarlak tarafı aşağı sarkar, flanşa değmemeli.
-VIDA_Y0 = S_UST + duvar + 1;
+VIDA_Y0 = S_UST + duvar + 1;           // zıpka taban plakasının dışında başlar
 DIS_H = vida_adim * 0.35;               // diş derinliği
 LEAD = 2 * vida_adim;                   // iki ağızlı: ilerleme
 
@@ -78,12 +93,23 @@ module v_acikligi() {
              [v_en/2, S_ALT], [0, S_ALT + v_derinlik], [-v_en/2, S_ALT]]);
 }
 BOYUN_EN = vida_d - 2*DIS_H;            // vidayı kenara bağlayan düz boyun
+// Kulaklar: levhanın iki yanında, ortada. Hem sıcak levhayı tutma yeri hem de
+// kıskaç yuvasının yeri. Kalıbın dışında kalır, şekil almaz, düz durur.
+KULAK_BOY = 8;      // dışa uzanım
+KULAK_EN  = 9;      // kenar boyunca
+KISKAC_YER = [for (s = [-1, 1]) [s * (S_EN/2 + kenar + KULAK_BOY/2), 0]];
+module kulaklar_2d() for (s = [-1, 1])
+    translate([s * (S_EN/2 + kenar + KULAK_BOY/2), 0])
+        // kenara 2 mm gömülür (sağlam bağlansın), dış ucu tam KULAK_BOY'da biter
+        translate([s > 0 ? -KULAK_BOY/2 - 2 : -KULAK_BOY/2, -KULAK_EN/2])
+            offset(r = 1.5) offset(delta = -1.5) square([KULAK_BOY + 2, KULAK_EN]);
 module levha_2d() difference() {
     union() {
         offset(r = kenar) S();
+        kulaklar_2d();
         translate([-BOYUN_EN/2, S_UST]) square([BOYUN_EN, VIDA_Y0 - S_UST + 0.5]);
     }
-    for (p = DELIKLER) translate(p) yuva_2d(0);
+    for (p = KISKAC_YER) translate(p) yuva_2d(0);
     // V önceden kesilir; kenar kalıptaki sırtın hemen dışına oturur, ona dayanır
     offset(r = SIRT/2 + 0.15) v_acikligi();
     if (desen != "yok") desen_delikleri();
@@ -136,7 +162,7 @@ module levha_healy() {
 C_ET   = 1.2;                               // sırt ve çene kalınlığı
 C_BOY  = YUVA_U - 0.6;                      // kıskaç genişliği (yuvaya girer)
 TIRNAK = 0.6;                               // tırnağın içe çıkıntısı
-YUVA_M = kenar - DELIK_MESAFE;              // yuva merkezinin kenardan uzaklığı
+YUVA_M = KULAK_BOY / 2;                     // yuva merkezinin kulak ucundan uzaklığı
 C_DERIN = YUVA_M + (YUVA_G - 0.4) / 2;      // çene boyu: tırnağın dış kenarına kadar
 module c_kiskac_2d() {
     m = c_agiz / 2;  tw = YUVA_G - 0.4;  x0 = C_ET + YUVA_M - tw/2;
@@ -188,7 +214,7 @@ module kabuk() {
 module kapali() {
     kabuk();
     rotate([0, 180, 0]) kabuk();
-    for (p = DELIKLER) let(s = p[0] > 0 ? 1 : -1)
+    for (p = KISKAC_YER) let(s = p[0] > 0 ? 1 : -1)
         color("Tomato") translate([p[0] + s * (YUVA_M + C_ET), p[1], 0])
             rotate([0, 0, s > 0 ? 180 : 0]) rotate([90, 0, 0]) translate([0, 0, -C_BOY/2]) c_kiskac();
     color("Orange") translate([0, VIDA_Y0 + 0.5, 0]) rotate([-90, 0, 0]) somun();
@@ -215,22 +241,19 @@ module v_sirt() intersection() {
     translate([0, 0, -1]) linear_extrude(et + kubbe + govde + 1) v_cizgi_2d();   // flanş üstünü aşmaz
     difference() { bosluk_govde(0); bosluk_govde(SIRT); }
 }
+// Kalıp: fincan. Dış hat = levhanın dış hattı, üst kenar düz ve et kadar dar.
 module kalip_healy() {
     H = et + kubbe + govde;
     difference() {
-        kalip();
-        for (p = DELIKLER) translate([p[0], p[1], H]) cylinder(d = delik_d + 1, h = 20, $fn = 32);
+        linear_extrude(H) offset(r = bosluk + et) S();
+        bosluk_govde(0);
     }
     v_sirt();
-    for (p = DELIKLER) translate([p[0], p[1], H - 0.01])
-        linear_extrude(kalinlik - 0.4 + 0.01) yuva_2d(-0.2);     // dörtgen pim
 }
 
-// Zıpka: flanşta pimlerin karşısında delik — pimler zıpkayı hiçbir boyda durdurmaz.
-module zipka_healy() difference() {
-    zipka();
-    for (p = DELIKLER) translate([p[0], p[1], -1]) linear_extrude(flans + 2) yuva_2d(0.2);
-}
+// Zıpka: taban plakası (kalıptan 1 mm geniş) + gövde. Plaka levha kenarını
+// kalıbın üst kenarına sıkıştırır.
+module zipka_healy() zipka();
 
 if      (parca_h == "levha")          levha_healy();
 else if (parca_h == "kalip")          kalip_healy();
