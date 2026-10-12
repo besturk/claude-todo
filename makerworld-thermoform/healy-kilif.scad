@@ -76,6 +76,8 @@ module levha_2d() difference() {
         translate([-BOYUN_EN/2, S_UST]) square([BOYUN_EN, VIDA_Y0 - S_UST + 0.5]);
     }
     for (p = DELIKLER) translate(p) circle(d = delik_d, $fn = 32);
+    // V önceden kesilir; kenar kalıptaki sırtın hemen dışına oturur, ona dayanır
+    offset(r = SIRT/2 + 0.15) v_acikligi();
 }
 module levha_healy() {
     linear_extrude(kalinlik) levha_2d();
@@ -145,9 +147,10 @@ module kapali() {
 }
 
 // ------------------------------------------------- V kesim çizgisi (kalıpta)
-// Levha V kesilmeden bütün basılır: boşta kenar kalmaz, hiçbir yer çekilip
-// eğrilmez. Kalıp boşluğunun yüzeyinde V çizgisini izleyen ince bir sırt
-// kabuğun dışına bu çizgiyi kabartır; soğuyunca çizgiden makasla kesilir.
+// Kalıp boşluğunun yüzeyinde V çizgisini izleyen ince bir sırt DAYANAKTIR:
+// levhada önceden kesilmiş V'nin kenarı bu sırtın dışına oturur. Zıpka sonuna
+// kadar inip yüzü kalıp tabanına sıkıştırınca kenar sırta dayanır, V'nin içine
+// kayamaz; duvardaki dikey kenarlar da aynı sırta dayanır. Sonradan kesim yok.
 SIRT = 0.8;                                    // sırt yüksekliği = kalınlığı
 module bosluk_govde(e = 0) {                   // kalıp boşluğu, e kadar içeri alınmış
     H = et + kubbe + govde;
