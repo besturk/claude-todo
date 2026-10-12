@@ -39,7 +39,7 @@ halka_delik = 4.5; // [2.5:0.5:8]
 parca = "yok";               // thermoform.scad kendi başına bir şey çizmesin
 sekil = "kutu";
 kutu_en = 58; kutu_boy = 60; kutu_kose = 7;
-govde = 9; kubbe = 4; kubbe_icerlek = 5;
+govde = 9.4; kubbe = 0.6; kubbe_icerlek = 3;   // iç boşluk: kenarda 2×9,4 = 18,8 · ortada 2×10 = 20 mm
 delik_yukseklikleri = [0.25, 0.75];
 
 S_ALT = -S_BOY/2;  S_UST = S_BOY/2;
@@ -75,7 +75,6 @@ module levha_2d() difference() {
         offset(r = kenar) S();
         translate([-BOYUN_EN/2, S_UST]) square([BOYUN_EN, VIDA_Y0 - S_UST + 0.5]);
     }
-    v_acikligi();
     for (p = DELIKLER) translate(p) circle(d = delik_d, $fn = 32);
 }
 module levha_healy() {
@@ -145,9 +144,37 @@ module kapali() {
     color("Orange") translate([0, VIDA_Y0 + 0.5, 0]) rotate([-90, 0, 0]) somun();
 }
 
+// ------------------------------------------------- V kesim çizgisi (kalıpta)
+// Levha V kesilmeden bütün basılır: boşta kenar kalmaz, hiçbir yer çekilip
+// eğrilmez. Kalıp boşluğunun yüzeyinde V çizgisini izleyen ince bir sırt
+// kabuğun dışına bu çizgiyi kabartır; soğuyunca çizgiden makasla kesilir.
+SIRT = 0.8;                                    // sırt yüksekliği = kalınlığı
+module bosluk_govde(e = 0) {                   // kalıp boşluğu, e kadar içeri alınmış
+    H = et + kubbe + govde;
+    translate([0, 0, et + kubbe + e]) linear_extrude(govde + 1) offset(r = -e) offset(r = bosluk) S();
+    for (i = [1:KN])
+        translate([0, 0, et + kubbe - kubbe_h(i) + e])
+            linear_extrude(govde + kubbe_h(i) + 1) offset(r = -e) offset(r = -kubbe_ins(i)) offset(r = bosluk) S();
+}
+V_YOL = [[-v_en/2, S_ALT - bosluk - 3], [-v_en/2, S_ALT], [0, S_ALT + v_derinlik],
+         [v_en/2, S_ALT], [v_en/2, S_ALT - bosluk - 3]];
+module v_cizgi_2d() for (i = [0:len(V_YOL) - 2])
+    hull() { translate(V_YOL[i]) circle(d = SIRT, $fn = 16); translate(V_YOL[i+1]) circle(d = SIRT, $fn = 16); }
+module v_sirt() intersection() {
+    translate([0, 0, -1]) linear_extrude(et + kubbe + govde + 1) v_cizgi_2d();   // flanş üstünü aşmaz
+    difference() { bosluk_govde(0); bosluk_govde(SIRT); }
+}
+module kalip_healy() { kalip(); v_sirt(); }
+
+// Zıpka: flanşta pimlerin karşısında delik — pimler zıpkayı hiçbir boyda durdurmaz.
+module zipka_healy() difference() {
+    zipka();
+    for (p = DELIKLER) translate([p[0], p[1], -1]) cylinder(d = delik_d + 0.4, h = flans + 2, $fn = 32);
+}
+
 if      (parca_h == "levha")          levha_healy();
-else if (parca_h == "kalip")          kalip();
-else if (parca_h == "zipka")          zipka();
+else if (parca_h == "kalip")          kalip_healy();
+else if (parca_h == "zipka")          zipka_healy();
 else if (parca_h == "c_kiskac")       c_kiskac();
 else if (parca_h == "somun")          somun();
 else if (parca_h == "kucuk_parcalar") kucuk_parcalar();
