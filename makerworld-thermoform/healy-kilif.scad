@@ -13,16 +13,18 @@
 include <thermoform.scad>
 
 /* [Healy] */
-parca_h = "levha"; // [levha:Levha (2 adet basılır), kalip:Dişi kalıp, zipka:Erkek zıpka, c_kiskac:C kıskaç, somun:Askılı somun, kucuk_parcalar:4 kıskaç + somun, kapali:Kapalı kılıf önizleme]
+parca_h = "levha"; // [levha:Levha (2 adet basılır), kalip:Dişi kalıp, zipka:Erkek zıpka, c_kiskac:C kıskaç, somun:Askılı somun, kucuk_parcalar:2 kıskaç + somun, kapali:Kapalı kılıf önizleme]
 // Levha kalınlığı (mm)
 kalinlik = 2.4; // [1.6:0.2:4]
 // Alttaki açıklığın eni (mm)
 v_en = 37; // [20:0.5:56]
 // Açıklığın silüet tabanından yukarı derinliği (mm)
 v_derinlik = 11; // [0:0.5:25]
-// Petek deliği (altıgen, düz kenarlar arası, mm) — 0 = desensiz dolu levha
-petek_d = 5; // [0:0.5:10]
-// Petek çubuğu kalınlığı (mm)
+// Levha deseni (modelde açılan, boydan boya delikler)
+desen = "altigen"; // [altigen:Bal peteği, baklava:Baklava, kare:Kare ızgara, daire:Yuvarlak delik, ucgen:Üçgen, yok:Desensiz]
+// Delik büyüklüğü (mm)
+petek_d = 5; // [2:0.5:10]
+// Delikler arası çubuk kalınlığı (mm)
 petek_cubuk = 1.2; // [0.8:0.1:3]
 // Desensiz bırakılan kenar şeridi (silüetin içinde, mm)
 petek_kenar = 2; // [1:0.5:6]
@@ -46,7 +48,7 @@ parca = "yok";               // thermoform.scad kendi başına bir şey çizmesi
 sekil = "kutu";
 kutu_en = 58; kutu_boy = 60; kutu_kose = 7;
 govde = 9.4; kubbe = 0.6; kubbe_icerlek = 3;   // iç boşluk: kenarda 2×9,4 = 18,8 · ortada 2×10 = 20 mm
-delik_yukseklikleri = [0.25, 0.75];
+delik_yukseklikleri = [0.5];          // her yanda tek kıskaç
 
 S_ALT = -S_BOY/2;  S_UST = S_BOY/2;
 c_agiz = 2*kalinlik + c_agiz_bosluk;
@@ -81,23 +83,44 @@ module levha_2d() difference() {
         offset(r = kenar) S();
         translate([-BOYUN_EN/2, S_UST]) square([BOYUN_EN, VIDA_Y0 - S_UST + 0.5]);
     }
-    for (p = DELIKLER) translate(p) circle(d = delik_d, $fn = 32);
+    for (p = DELIKLER) translate(p) yuva_2d(0);
     // V önceden kesilir; kenar kalıptaki sırtın hemen dışına oturur, ona dayanır
-    offset(r = SIRT/2 + 0.15) v_acikligi();    if (petek_d > 0) petek_delikleri();
+    offset(r = SIRT/2 + 0.15) v_acikligi();
+    if (desen != "yok") desen_delikleri();
 }
-// Bal peteği: modelde açılan, levhayı boydan boya geçen altıgen delikler.
-// Silüetin kenar şeridi, V'nin çevresi ve vida boynu dolu kalır.
-module petek_delikleri() {
-    adim = petek_d + petek_cubuk;
-    sat  = adim * sqrt(3) / 2;
-    intersection() {
-        difference() {
-            offset(r = -petek_kenar) S();
-            offset(r = SIRT/2 + 0.15 + petek_kenar) v_acikligi();
-        }
-        for (j = [-ceil(S_BOY / sat) : ceil(S_BOY / sat)], i = [-ceil(S_EN / adim) - 1 : ceil(S_EN / adim) + 1])
-            translate([i * adim + (j % 2 == 0 ? 0 : adim / 2), j * sat])
-                rotate(30) circle(d = petek_d / cos(30), $fn = 6);
+// Kıskaç yuvası: kenarda dörtgen boşluk (uzun kenarı levha kenarına paralel).
+// Aynı yuva kalıpta pimi, zıpkada pim deliğini belirler.
+YUVA_U = 4.0;   // kenar boyunca
+YUVA_G = 2.0;   // kenara dik
+module yuva_2d(e = 0) square([YUVA_G + 2*e, YUVA_U + 2*e], center = true);
+// Desen: modelde açılan, levhayı boydan boya geçen delikler. Silüetin kenar
+// şeridi ve V'nin çevresi dolu kalır. Her desende delik ≈ petek_d, çubuk = petek_cubuk.
+module desen_alani() difference() {
+    offset(r = -petek_kenar) S();
+    offset(r = SIRT/2 + 0.15 + petek_kenar) v_acikligi();
+}
+module desen_delikleri() intersection() {
+    desen_alani();
+    a = petek_d; c = petek_cubuk; N = ceil(max(S_EN, S_BOY) / (a + c)) + 2;
+    if (desen == "altigen" || desen == "daire") {
+        adim = a + c; sat = adim * sqrt(3) / 2;
+        for (j = [-N : N], i = [-N : N]) translate([i * adim + (j % 2 == 0 ? 0 : adim / 2), j * sat])
+            if (desen == "altigen") rotate(30) circle(d = a / cos(30), $fn = 6);
+            else circle(d = a, $fn = 32);
+    } else if (desen == "kare") {
+        adim = a + c;
+        for (j = [-N : N], i = [-N : N]) translate([i * adim, j * adim]) square(a, center = true);
+    } else if (desen == "baklava") {
+        // 45° dönmüş kareler; çubuklar köşegen yönünde — en iyi esneyen ızgara
+        adim = (a + c) * sqrt(2);
+        for (j = [-2*N : 2*N], i = [-N : N]) translate([i * adim + (j % 2 == 0 ? 0 : adim / 2), j * adim / 2])
+            rotate(45) square(a, center = true);
+    } else if (desen == "ucgen") {
+        // eşkenar üçgenler, yukarı/aşağı sırayla; aralar c kalınlığında çubuk
+        t = (a + c) * sqrt(3);  R = t / sqrt(3);  dy = 1.5 * R;
+        for (j = [-N : N], i = [-2*N : 2*N]) let(yuk = (i + j) % 2 == 0)
+            translate([i * t / 2, j * dy + (yuk ? R/2 : R) - 0.75 * R])
+                offset(delta = -c / 2) rotate(yuk ? 90 : -90) circle(r = R, $fn = 3);
     }
 }
 
@@ -107,21 +130,24 @@ module levha_healy() {
 }
 
 // ---------------------------------------------------------------- C kıskaç
-// Profil (XY'de) tablaya dik basılır, Z boyunca uzar. Ağız iki kabuğun kenarını
-// kavrar; çenelerdeki tırnaklar kenar deliğine iki taraftan oturur, kıskaç kaymaz.
-C_DERIN = kenar - DELIK_MESAFE + delik_d/2 + 1.5;
-C_ET = 1.8; C_BOY = 10;
-module c_kiskac() {
+// İnce bir C: arkası düz, iki çenenin ucunda içe dönük tırnak. Tırnaklar kenardaki
+// dörtgen yuvaya iki yüzden oturur. Profil (XY) tablaya yatık basılır, Z boyunca
+// C_BOY kadar uzar — desteksiz. Girişte tırnak pahlı, arkası dik (kilitler).
+C_ET   = 1.2;                               // sırt ve çene kalınlığı
+C_BOY  = YUVA_U - 0.6;                      // kıskaç genişliği (yuvaya girer)
+TIRNAK = 0.6;                               // tırnağın içe çıkıntısı
+YUVA_M = kenar - DELIK_MESAFE;              // yuva merkezinin kenardan uzaklığı
+C_DERIN = YUVA_M + (YUVA_G - 0.4) / 2;      // çene boyu: tırnağın dış kenarına kadar
+module c_kiskac_2d() {
+    m = c_agiz / 2;  tw = YUVA_G - 0.4;  x0 = C_ET + YUVA_M - tw/2;
     difference() {
-        translate([0, -c_agiz/2 - C_ET, 0]) cube([C_DERIN + C_ET, c_agiz + 2*C_ET, C_BOY]);
-        translate([C_ET, -c_agiz/2, -1]) cube([C_DERIN + 1, c_agiz, C_BOY + 2]);
-        translate([C_DERIN + C_ET, 0, -1]) rotate([0, 0, 45]) cube([1.6, 1.6, C_BOY + 2]);
-        translate([C_DERIN + C_ET, 0, -1]) rotate([0, 0, -135]) cube([1.6, 1.6, C_BOY + 2]);
+        translate([0, -m - C_ET]) square([C_ET + C_DERIN, c_agiz + 2*C_ET]);
+        translate([C_ET, -m]) square([C_DERIN + 1, c_agiz]);
     }
-    tx = C_ET + (kenar - DELIK_MESAFE);
-    for (s = [-1, 1]) translate([tx, s * c_agiz/2, C_BOY/2])
-        rotate([s * 90, 0, 0]) cylinder(d1 = delik_d - 0.5, d2 = delik_d - 1.4, h = 0.6, $fn = 32);
+    for (s = [1, -1]) scale([1, s])
+        polygon([[x0, m], [x0, m - TIRNAK], [x0 + tw * 0.4, m - TIRNAK], [x0 + tw, m]]);
 }
+module c_kiskac() linear_extrude(C_BOY) c_kiskac_2d();
 
 // ------------------------------------------------------------ askılı somun
 // Tablaya düz basılır; halka üstte dik durur, deliği yatay (ip sağdan sola geçer).
@@ -140,7 +166,7 @@ module somun() {
 }
 
 module kucuk_parcalar() {
-    for (i = [0:3]) translate([i * (C_DERIN + C_ET + 6), 0, 0]) c_kiskac();
+    for (i = [0:1]) translate([i * (C_DERIN + C_ET + 6), 0, 0]) c_kiskac();
     translate([0, -20, 0]) somun();
 }
 
@@ -163,7 +189,7 @@ module kapali() {
     kabuk();
     rotate([0, 180, 0]) kabuk();
     for (p = DELIKLER) let(s = p[0] > 0 ? 1 : -1)
-        color("Tomato") translate([p[0] + s * (kenar - DELIK_MESAFE + C_ET), p[1], 0])
+        color("Tomato") translate([p[0] + s * (YUVA_M + C_ET), p[1], 0])
             rotate([0, 0, s > 0 ? 180 : 0]) rotate([90, 0, 0]) translate([0, 0, -C_BOY/2]) c_kiskac();
     color("Orange") translate([0, VIDA_Y0 + 0.5, 0]) rotate([-90, 0, 0]) somun();
 }
@@ -189,12 +215,21 @@ module v_sirt() intersection() {
     translate([0, 0, -1]) linear_extrude(et + kubbe + govde + 1) v_cizgi_2d();   // flanş üstünü aşmaz
     difference() { bosluk_govde(0); bosluk_govde(SIRT); }
 }
-module kalip_healy() { kalip(); v_sirt(); }
+module kalip_healy() {
+    H = et + kubbe + govde;
+    difference() {
+        kalip();
+        for (p = DELIKLER) translate([p[0], p[1], H]) cylinder(d = delik_d + 1, h = 20, $fn = 32);
+    }
+    v_sirt();
+    for (p = DELIKLER) translate([p[0], p[1], H - 0.01])
+        linear_extrude(kalinlik - 0.4 + 0.01) yuva_2d(-0.2);     // dörtgen pim
+}
 
 // Zıpka: flanşta pimlerin karşısında delik — pimler zıpkayı hiçbir boyda durdurmaz.
 module zipka_healy() difference() {
     zipka();
-    for (p = DELIKLER) translate([p[0], p[1], -1]) cylinder(d = delik_d + 0.4, h = flans + 2, $fn = 32);
+    for (p = DELIKLER) translate([p[0], p[1], -1]) linear_extrude(flans + 2) yuva_2d(0.2);
 }
 
 if      (parca_h == "levha")          levha_healy();
