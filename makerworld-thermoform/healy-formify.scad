@@ -115,7 +115,9 @@ module ic_hacim(e = 0) for (i = [0 : N_KAT - 1]) {
 // --------------------------------------------------------------- vida
 DIS_H = vida_adim * 0.35;
 LEAD = 2 * vida_adim;
-VIDA_Y0 = S_UST + DIS_OFS + 0.5;
+// Vida çerçevenin içinden başlar: arada ince, bükülebilen boyun kalmaz
+VIDA_Y0 = S_UST + DIS_OFS - rim_en;
+VIDA_Y1 = VIDA_Y0 + vida_boy;            // vidanın ucu
 module dis2(d, L) linear_extrude(L, twist = -360 * L / LEAD, slices = ceil(L / LEAD * 36))
     scale([1, (d - 2*DIS_H) / d]) circle(d = d, $fn = 64);
 module tam_vida() translate([0, VIDA_Y0, 0]) rotate([-90, 0, 0]) dis2(vida_d, vida_boy);
@@ -124,6 +126,11 @@ module yarim_vida() intersection() {
     translate([-vida_d, VIDA_Y0 - 1, 0]) cube([2*vida_d, vida_boy + 2, vida_d]);
 }
 BOYUN_EN = vida_d - 2*DIS_H;
+module boyun_2d() translate([-BOYUN_EN/2, S_UST]) square([BOYUN_EN, VIDA_Y1 - S_UST]);
+// Kalıpların vidayı baştan sona taşıyan dili (dış hatta eklenir)
+DIL_EN = vida_d + 0.6 + 2*kalip_duvar;
+module dil_2d() translate([-DIL_EN/2, S_UST]) square([DIL_EN, VIDA_Y1 + 0.5 + kalip_duvar - S_UST]);
+module kalip_2d() union() { offset(r = cep_bosluk + kalip_duvar) DIS(); dil_2d(); }
 
 // --------------------------------------------------------------- levha
 module kafes_2d() intersection() {
@@ -138,7 +145,7 @@ module levha() {
         union() {
             linear_extrude(kalinlik) union() {
                 DIS();
-                translate([-BOYUN_EN/2, S_UST]) square([BOYUN_EN, VIDA_Y0 - S_UST + 0.5]);
+                boyun_2d();
             }
             // çerçeve: dış hat boyunca rim_en genişliğinde, rim_h yüksekliğinde
             linear_extrude(rim_h) difference() { DIS(); offset(r = -rim_en) DIS(); }
@@ -157,17 +164,18 @@ H_D = PF + CEP;                           // dişi kalıp yüksekliği
 // kabuk koordinatından dişi koordinatına: z_d = PF + kalinlik - z
 module kabuktan_disiye() translate([0, 0, PF + kalinlik]) mirror([0, 0, 1]) children();
 module disi() difference() {
-    linear_extrude(H_D) offset(r = cep_bosluk + kalip_duvar) DIS();
-    // levha cebi
-    translate([0, 0, PF]) linear_extrude(H_D) offset(r = cep_bosluk) DIS();
+    linear_extrude(H_D) kalip_2d();
+    // levha cebi (boyun dahil)
+    translate([0, 0, PF]) linear_extrude(H_D) offset(r = cep_bosluk) union() { DIS(); boyun_2d(); }
     // çerçeve oluğu
     translate([0, 0, PF - (rim_h - kalinlik) - C]) linear_extrude(rim_h)
         difference() { offset(r = cep_bosluk) DIS(); offset(r = -rim_en - cep_bosluk) DIS(); }
     // şekil boşluğu = kabuğun dış yüzü + C
     kabuktan_disiye() kabuk_dis(C);
-    // boyun ve yarım vida kanalı (duvarı keser)
-    translate([-(vida_d/2 + 0.4), S_UST, PF + kalinlik - vida_d/2 - 0.4])
-        cube([vida_d + 0.8, 40, 20]);
+    // yarım vida yatağı: vidanın tam boyunca yarım silindir, ucu kapalı.
+    // Çerçeve ve oluk kesintisiz kalır; yatak vidanın başladığı yerden başlar.
+    translate([0, VIDA_Y0 - 0.2, PF + kalinlik]) rotate([-90, 0, 0])
+        cylinder(d = vida_d + 0.6, h = vida_boy + 0.7, $fn = 64);
 }
 // Kabuğun dış yüzü: iç hacmin her yanı levha kalınlığı kadar dışarıda
 module kabuk_dis(e) for (i = [0 : N_KAT - 1]) {
@@ -182,7 +190,8 @@ module kabuk_dis(e) for (i = [0 : N_KAT - 1]) {
 // Tabla üstünde: plaka altta, çıkıntı yukarıda. Kullanırken ters çevrilir.
 T_E = 2.2;
 module erkek() {
-    linear_extrude(T_E) offset(r = cep_bosluk + kalip_duvar) DIS();
+    // taban plakası dişinin dilini de örter: vidanın düz yüzünü baştan sona bastırır
+    linear_extrude(T_E) kalip_2d();
     // kabuk koordinatı z → erkek z: T_E + C + z  (z = -C'den başlar)
     translate([0, 0, T_E + C]) intersection() {
         ic_hacim(-C);
