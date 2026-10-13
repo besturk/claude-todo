@@ -27,6 +27,7 @@ v_en = 37;
 v_derinlik = 11;
 egim = 2;        // kabuk yan duvar eğimi (derece)
 tavan_r = 2;     // tavan kenar yuvarlaması
+d_pay = 0.75;    // kabuk iç derinliği = cihaz_h/2 + d_pay
 
 /* [Levha — kalp-80-ref] */
 kalinlik = 1.0;
@@ -68,7 +69,7 @@ halka_delik = 4.5;
 $fn = 48;
 IC_EN  = cihaz_en  + 2*cihaz_bosluk;
 IC_BOY = cihaz_boy + 2*cihaz_bosluk;
-D = cihaz_h/2 + 0.75;
+D = cihaz_h/2 + d_pay;
 S_UST = IC_BOY/2;  S_ALT = -IC_BOY/2;
 N_KAT = 40;
 RIB_H = kalinlik + kaburga_h;                     // 4,5
