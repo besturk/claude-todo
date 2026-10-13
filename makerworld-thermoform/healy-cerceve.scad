@@ -37,7 +37,7 @@ bant_en = 6.5;            // kenarda dolu (eş merkezli %100) bant
 v_basma = 2.0;            // (taban yöntemi) V kenarında çerçevenin bastırdığı şerit
 // V yöntemi: "ust" = levha V'de cihazın üst yüzünde biter, çentiğin duvarları açık
 //            "taban" = levha çentiğin duvarlarını sarar, kenarı tabanda (ilk deneme)
-v_yontem = "taban";        // öneri onaylanınca "ust" olacak
+v_yontem = "ust";
 v_ic = 3.0;               // (ust) levhanın V kenarı, çentik çizgisinin bu kadar içinde
 v_dudak = 3.0;            // (ust) çerçeve dudağı levhanın üstüne bu kadar taşar
 
@@ -141,6 +141,9 @@ module cerceve_2d() difference() { halka_2d(); offset(r = acik_pay) IC(); }
 // (ust) V dudağı: çentiği doldurur, kalıbın üstüne taşıp levhanın V kenarını
 // kalıbın üst yüzüne bastırır. Alt yüzü kabuğun dış yüzünü izler (dik iner, takılmaz).
 DUDAK_UST = D + kalinlik + 2;
+// Çerçevenin üstü her yerde düz: ust yönteminde dudakla aynı yükseklik (12 mm),
+// böylece ters çevrilip düz yüzü tablada desteksiz basılır.
+CERCEVE_UST = v_yontem == "ust" ? max(DUDAK_UST, kalinlik + cerceve_h) : kalinlik + cerceve_h;
 module v_dudak_blok() difference() {
     translate([0, 0, kalinlik]) linear_extrude(DUDAK_UST - kalinlik)
         intersection() { offset(r = v_ic + v_dudak) N(); halka_2d(); }
@@ -150,7 +153,7 @@ module v_dudak_blok() difference() {
 }
 module cerceve() difference() {
     union() {
-        translate([0, 0, kalinlik]) linear_extrude(cerceve_h) cerceve_2d();
+        translate([0, 0, kalinlik]) linear_extrude(CERCEVE_UST - kalinlik) cerceve_2d();
         if (v_yontem == "ust") v_dudak_blok();
     }
     // kilit kaburgası oluğu
@@ -162,7 +165,7 @@ module cerceve() difference() {
     translate([0, VIDA_Y0 - 0.2, 0]) rotate([-90, 0, 0]) cylinder(d = vida_d + 0.6, h = vida_boy + 0.7, $fn = 64);
 }
 // Baskı konumu: oluk yukarı bakar
-module cerceve_baski() translate([0, 0, kalinlik + cerceve_h]) mirror([0, 0, 1]) cerceve();
+module cerceve_baski() translate([0, 0, CERCEVE_UST]) mirror([0, 0, 1]) cerceve();
 
 // ---------------------------------------------------------- erkek kalıp
 module erkek() {
