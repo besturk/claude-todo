@@ -34,7 +34,12 @@ levha_kenar = 9.0;        // şeklin dışındaki pay
 kaburga_en = 1.8;
 kaburga_h = 3.5;          // levhanın üstüne
 bant_en = 6.5;            // kenarda dolu (eş merkezli %100) bant
-v_basma = 2.0;            // V kenarında çerçevenin bastırdığı şerit
+v_basma = 2.0;            // (taban yöntemi) V kenarında çerçevenin bastırdığı şerit
+// V yöntemi: "ust" = levha V'de cihazın üst yüzünde biter, çentiğin duvarları açık
+//            "taban" = levha çentiğin duvarlarını sarar, kenarı tabanda (ilk deneme)
+v_yontem = "taban";        // öneri onaylanınca "ust" olacak
+v_ic = 3.0;               // (ust) levhanın V kenarı, çentik çizgisinin bu kadar içinde
+v_dudak = 3.0;            // (ust) çerçeve dudağı levhanın üstüne bu kadar taşar
 
 /* [Çerçeve — kalp-80-ref] */
 cerceve_h = 10;
@@ -105,7 +110,9 @@ module P0() offset(r = levha_kenar) IC();                // kesilmemiş dış ha
 // V açıklığı: levha V'de önceden açık basılır. Kesik kenar, kalıbın V
 // duvarından açık payı + v_basma kadar uzakta durur; çerçeve V'nin içine
 // uzanan kısmıyla bu v_basma şeridini tabana bastırır.
-module VKES() offset(r = -(acik_pay + v_basma)) offset(r = -cihaz_bosluk) v2d();
+module N() offset(r = -cihaz_bosluk) v2d();             // cihazın çentiği (kalıpta)
+module VKES() if (v_yontem == "ust") offset(r = v_ic) N();
+              else offset(r = -(acik_pay + v_basma)) N();
 module P() difference() { P0(); VKES(); }               // levhanın dış hattı
 // Kaburga dış hat boyunca; V kesiğinde yok (orayı çerçeve düz bastırır)
 module kaburga_2d() difference() { P0(); offset(r = -kaburga_en) P0(); offset(r = kaburga_en) VKES(); }
@@ -131,8 +138,21 @@ module halka_2d() union() {
 }
 module cerceve_2d() difference() { halka_2d(); offset(r = acik_pay) IC(); }
 // Kullanım konumu: alt yüzü levhanın üstünde (z = kalinlik)
+// (ust) V dudağı: çentiği doldurur, kalıbın üstüne taşıp levhanın V kenarını
+// kalıbın üst yüzüne bastırır. Alt yüzü kabuğun dış yüzünü izler (dik iner, takılmaz).
+DUDAK_UST = D + kalinlik + 2;
+module v_dudak_blok() difference() {
+    translate([0, 0, kalinlik]) linear_extrude(DUDAK_UST - kalinlik)
+        intersection() { offset(r = v_ic + v_dudak) N(); halka_2d(); }
+    ic_hacim(0.3);
+    translate([0, 0, D]) linear_extrude(0.3) offset(r = 0.3 - ins(D)) IC();
+    dis_hacim(0);
+}
 module cerceve() difference() {
-    translate([0, 0, kalinlik]) linear_extrude(cerceve_h) cerceve_2d();
+    union() {
+        translate([0, 0, kalinlik]) linear_extrude(cerceve_h) cerceve_2d();
+        if (v_yontem == "ust") v_dudak_blok();
+    }
     // kilit kaburgası oluğu
     translate([0, 0, kalinlik - 0.01]) linear_extrude(oluk_derin + 0.01)
         offset(delta = oluk_pay) kaburga_2d();
@@ -181,11 +201,11 @@ module somun() {
 
 // ------------------------------------------------- şekillenmiş kabuk
 // Kabuğun dış yüzü: iç yüzden levha kalınlığı kadar dışarıda, tavanı da dahil
-module dis_hacim() for (i = [0 : N_KAT - 1]) {
-    Dd = D + kalinlik;
+module dis_hacim(e = 0) for (i = [0 : N_KAT - 1]) {
+    Dd = D + kalinlik + e;
     z0 = Dd * i / N_KAT;  z1 = Dd * (i + 1) / N_KAT;
     translate([0, 0, z0]) linear_extrude(z1 - z0 + 0.001)
-        offset(r = kalinlik - ins(min(D, z1))) IC();
+        offset(r = kalinlik + e - ins(min(D, z1))) IC();
 }
 module kabuk() {
     intersection() { translate([-200, -200, 0]) cube([400, 400, 50]); difference() {
@@ -195,6 +215,8 @@ module kabuk() {
             linear_extrude(RIB_H) kaburga_2d();
         }
         ic_hacim(0);
+        // (ust) V'de levha yok: çentiğin duvarları ve kenarın 3 mm'si açık
+        if (v_yontem == "ust") translate([0, 0, -1]) linear_extrude(D + 5) VKES();
     } }
     yarim_vida();
 }
