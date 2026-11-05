@@ -18,9 +18,13 @@ DELIK_CAP  = 2.2
 HAVSA_CAP  = 4.2
 FLANS_EN, FLANS_KAL, FLANS_DERIN = 15.7, 3.2, 8.3
 DESTEK_R   = 4.0    # flanş altı kavisli destek
-BOYUN_EN, BOYUN_KAL = 6.5, 2.3
+BOYUN_EN, BOYUN_KAL = HALKA_IC_EN, HALKA_IC_YUK   # deliği tam doldurur, halka kaymaz (pay 0)
 BOYUN_UZ   = HALKA_KAL          # halka flanşla blok arasında sıkı (pay 0,00)
-BLOK_EN, BLOK_KAL, BLOK_UZ = 7.4, 3.6, 3.6
+TIRNAK     = 0.6    # her yanda halka yan çubuğuna binme
+BASLIK_UZ  = 2.6    # tırnak başı boyu (ucu pahlı, itince bacaklar içeri esner)
+UC_EN      = 6.4    # tırnak ucunun eni (giriş pahı)
+YARIK_EN   = 1.8    # iki bacak arası yarık (2x0,6 sıkışma + pay)
+YARIK_ALT  = 10.0   # yarığın indiği yer (tabandan); esneme boyu için
 
 def kutu(x0,x1,y0,y1,z0,z1):
     b = trimesh.creation.box(extents=[x1-x0,y1-y0,z1-z0])
@@ -43,8 +47,19 @@ def model():
     c.apply_translation([0,yb-DESTEK_R+0.15,PLAKA_KAL+DESTEK_R-0.15])  # teğet sivri kenar olmasın
     parts.append(d.difference(c))
     parts.append(kutu(-BOYUN_EN/2,BOYUN_EN/2,yf-0.01,yf+BOYUN_UZ+0.01,0,BOYUN_KAL))
-    parts.append(kutu(-BLOK_EN/2,BLOK_EN/2,yf+BOYUN_UZ,yf+BOYUN_UZ+BLOK_UZ,0,BLOK_KAL))
+    # tırnak başı: tutma yüzü düz, ucu pahlı (yamuk)
+    y0 = yf+BOYUN_UZ; w0 = BOYUN_EN/2+TIRNAK
+    bas = trimesh.creation.extrude_polygon(Polygon([(-w0,y0),(w0,y0),(w0,y0+0.6),
+            (UC_EN/2,y0+BASLIK_UZ),(-UC_EN/2,y0+BASLIK_UZ),(-w0,y0+0.6)]), BOYUN_KAL)
+    parts.append(bas)
     m = trimesh.boolean.union(parts)
+    # yarık: tırnaktan aşağı, flanş ve belden geçip plakaya iner (ucu yuvarlak)
+    ytop = yf+BOYUN_UZ+BASLIK_UZ+1
+    yr = Polygon([(-YARIK_EN/2,YARIK_ALT),(YARIK_EN/2,YARIK_ALT),(YARIK_EN/2,ytop),(-YARIK_EN/2,ytop)])
+    from shapely.geometry import Point
+    yr = yr.union(Point(0,YARIK_ALT).buffer(YARIK_EN/2, resolution=24))
+    yk = trimesh.creation.extrude_polygon(yr, 20); yk.apply_translation([0,0,-5])
+    m = m.difference(yk)
     # havşalı vida delikleri (havşa ön yüzde)
     for sx in (-1,1):
         x = sx*DELIK_ARA/2
